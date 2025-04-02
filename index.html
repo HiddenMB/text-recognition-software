@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Text Recognition For The Visually Impaired</title>
+  <!-- Import Google Font: Roboto -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    /* Global Styles */
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background-color: #f1f3f4;
+      font-family: 'Roboto', sans-serif;
+      color: #202124;
+    }
+    header {
+      background-color: #4285f4;
+      color: #fff;
+      padding: 1rem 2rem;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 500;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      position: relative;
+    }
+    header button {
+      position: absolute;
+      right: 2rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background-color: #fff;
+      color: #4285f4;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+    /* Buttons */
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin: 1rem 0;
+      background-color: #4285f4;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    button:hover {
+      background-color: #3367d6;
+      transform: translateY(-2px);
+    }
+    video, canvas, img {
+      width: 100%;
+      border-radius: 4px;
+      margin: 1rem 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    #output {
+      margin: 1rem 0;
+      padding: 1rem;
+      font-size: 1.5rem;
+      background: #f8f9fa;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      min-height: 100px;
+      white-space: pre-wrap;
+    }
+    .hidden { display: none; }
+    /* Settings Modal Styles */
+    #settingsModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(66,133,244,0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #settingsContent {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    #settingsContent h2 {
+      margin-top: 0;
+      text-align: center;
+      font-weight: 500;
+      color: #202124;
+    }
+    #settingsContent .setting {
+      margin: 10px 0;
+    }
+    #settingsContent label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.9rem;
+      color: #202124;
+    }
+    #settingsContent input[type="range"],
+    #settingsContent select,
+    #settingsContent input[type="color"] {
+      width: 100%;
+      padding: 4px;
+      border-radius: 4px;
+      border: 1px solid #dadce0;
+    }
+    #closeSettingsBtn {
+      display: block;
+      margin: 1rem auto 0;
+      padding: 10px 20px;
+      background-color: #4285f4;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    #closeSettingsBtn:hover { background-color: #3367d6; }
+  </style>
+</head>
+<body>
+  <header>
+    Text Recognition For The Visually Impaired
+    <button id="settingsBtn">Settings</button>
+  </header>
+  
+  <div class="container">
+    <h1>Text Recogniation Portal</h1>
+    <video id="video" autoplay playsinline></video>
+    <button id="capture-btn">Take Picture</button>
+    
+    <canvas id="canvas" class="hidden"></canvas>
+    <img id="photo" class="hidden" alt="Captured image">
+    
+    <button id="ocr-btn" class="hidden">Run OCR</button>
+    <button id="retake-btn" class="hidden">Retake Picture</button>
+    <button id="tts-btn" class="hidden">Text to Speech</button>
+    
+    <div id="output">Recognized text will appear here...</div>
+  </div>
+  
+  <!-- Settings Modal -->
+  <div id="settingsModal">
+    <div id="settingsContent">
+      <h2>Settings</h2>
+      <div class="setting">
+        <label for="voiceSelect">TTS Voice:</label>
+        <select id="voiceSelect"></select>
+      </div>
+      <div class="setting">
+        <label for="rateSlider">TTS Speed:</label>
+        <input type="range" id="rateSlider" min="0.5" max="2" step="0.1" value="1">
+      </div>
+      <div class="setting">
+        <label for="ttsTestBtn">Test TTS Settings:</label>
+        <button id="ttsTestBtn">Test Voice</button>
+      </div>
+      <div class="setting">
+        <label for="fontColorPicker">Output Text Color:</label>
+        <input type="color" id="fontColorPicker" value="#202124">
+      </div>
+      <div class="setting">
+        <label for="bgColorPicker">Output Background Color:</label>
+        <input type="color" id="bgColorPicker" value="#f8f9fa">
+      </div>
+      <div class="setting">
+        <label for="fontFamilySelect">Output Font:</label>
+        <select id="fontFamilySelect">
+          <option value="sans-serif">Sans-serif</option>
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="Verdana, sans-serif">Verdana</option>
+          <option value="Tahoma, sans-serif">Tahoma</option>
+          <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+          <option value="'Lucida Console', monospace">Lucida Console</option>
+          <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
+          <option value="'Impact', sans-serif">Impact</option>
+        </select>
+      </div>
+      <div class="setting">
+        <label for="globalFontSizeSlider">Global Font Size:</label>
+        <input type="range" id="globalFontSizeSlider" min="12" max="36" step="1" value="16">
+      </div>
+      <button id="closeSettingsBtn">Close Settings</button>
+    </div>
+  </div>
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      // Main Elements
+      const video = document.getElementById('video');
+      const captureBtn = document.getElementById('capture-btn');
+      const canvas = document.getElementById('canvas');
+      const photo = document.getElementById('photo');
+      const ocrBtn = document.getElementById('ocr-btn');
+      const retakeBtn = document.getElementById('retake-btn');
+      const ttsBtn = document.getElementById('tts-btn');
+      const output = document.getElementById('output');
+      
+      // Settings Modal Elements
+      const settingsBtn = document.getElementById('settingsBtn');
+      const settingsModal = document.getElementById('settingsModal');
+      const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+      const voiceSelect = document.getElementById('voiceSelect');
+      const rateSlider = document.getElementById('rateSlider');
+      const ttsTestBtn = document.getElementById('ttsTestBtn');
+      const fontColorPicker = document.getElementById('fontColorPicker');
+      const bgColorPicker = document.getElementById('bgColorPicker');
+      const fontFamilySelect = document.getElementById('fontFamilySelect');
+      const globalFontSizeSlider = document.getElementById('globalFontSizeSlider');
+      
+      // Variable to store raw captured image
+      let rawImage = null;
+      
+      async function startCamera() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+          video.srcObject = stream;
+        } catch (err) {
+          alert('Error accessing camera: ' + err);
+        }
+      }
+      
+      // Capture the raw image from the video stream
+      function captureRawImage() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        rawImage = new Image();
+        rawImage.src = canvas.toDataURL('image/png');
+      }
+      
+      // Auto-adjust brightness/contrast with less aggressive values
+      function autoAdjustParameters(ctx, width, height) {
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        let sum = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          sum += (data[i] + data[i+1] + data[i+2]) / 3;
+        }
+        const avg = sum / (data.length / 4);
+        let brightnessFactor, contrastFactor;
+        if (avg < 80) {
+          brightnessFactor = 140;
+          contrastFactor = 140;
+        } else if (avg < 130) {
+          brightnessFactor = 130;
+          contrastFactor = 130;
+        } else {
+          brightnessFactor = 120;
+          contrastFactor = 120;
+        }
+        return { brightnessFactor, contrastFactor };
+      }
+      
+      // Update preview image using auto-adjusted brightness/contrast
+      function updatePreviewAuto() {
+        if (!rawImage) return;
+        canvas.width = rawImage.width;
+        canvas.height = rawImage.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(rawImage, 0, 0);
+        const { brightnessFactor, contrastFactor } = autoAdjustParameters(ctx, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.filter = `brightness(${brightnessFactor}%) contrast(${contrastFactor}%)`;
+        ctx.drawImage(rawImage, 0, 0);
+        photo.src = canvas.toDataURL('image/png');
+      }
+      
+      // Send image to OCR.space and then send text to Hugging Face for grammar correction
+      async function runOCR() {
+        output.textContent = 'Scanning...';
+        const dataUrl = canvas.toDataURL('image/png');
+        const formData = new FormData();
+        formData.append("base64Image", dataUrl);
+        formData.append("language", "eng");
+        formData.append("isOverlayRequired", "false");
+        
+        try {
+          const response = await fetch("https://api.ocr.space/parse/image", {
+            method: "POST",
+            headers: { "apikey": "helloworld" },
+            body: formData
+          });
+          const result = await response.json();
+          if (result && result.ParsedResults && result.ParsedResults.length > 0) {
+            let ocrText = result.ParsedResults[0].ParsedText || 'No text detected.';
+            if (ocrText.trim() === "") {
+              output.textContent = 'No text detected.';
+              ttsBtn.classList.add('hidden');
+              return;
+            }
+            output.textContent = "OCR result:\n" + ocrText + "\n\nCorrecting text...";
+            try {
+              const fixedText = await fixTextWithHuggingFace(ocrText);
+              output.textContent = fixedText;
+              if (fixedText.trim() !== "") {
+                ttsBtn.classList.remove('hidden');
+              } else {
+                ttsBtn.classList.add('hidden');
+              }
+            } catch (error) {
+              output.textContent = "OCR result:\n" + ocrText + "\n\nError correcting text: " + error;
+              ttsBtn.classList.add('hidden');
+            }
+          } else {
+            output.textContent = 'No text detected.';
+            ttsBtn.classList.add('hidden');
+          }
+        } catch (error) {
+          output.textContent = 'Error: ' + error;
+          ttsBtn.classList.add('hidden');
+        }
+      }
+      
+      // Use Hugging Face Inference API for grammar correction
+      async function fixTextWithHuggingFace(text) {
+        const response = await fetch("https://api-inference.huggingface.co/models/vennify/grammar-correction", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+            // "Authorization": "Bearer YOUR_HF_API_KEY" // Uncomment and add your token if required.
+          },
+          body: JSON.stringify({ inputs: text })
+        });
+        const result = await response.json();
+        if (Array.isArray(result) && result.length > 0 && result[0].generated_text) {
+          return result[0].generated_text.trim();
+        }
+        return text;
+      }
+      
+      // Update output styling and update button styling
+      function updateOutputStyle() {
+        output.style.backgroundColor = bgColorPicker.value;
+        output.style.color = fontColorPicker.value;
+        output.style.fontFamily = fontFamilySelect.value;
+        
+        const buttons = document.querySelectorAll("button");
+        buttons.forEach(btn => {
+          btn.style.backgroundColor = bgColorPicker.value;
+          btn.style.color = fontColorPicker.value;
+          btn.style.fontFamily = fontFamilySelect.value;
+          btn.style.fontSize = globalFontSizeSlider.value + "px";
+        });
+      }
+      
+      // Update global font size for the entire website
+      function updateGlobalFontSize() {
+        document.documentElement.style.fontSize = globalFontSizeSlider.value + "px";
+      }
+      
+      // Populate voice dropdown for TTS using SpeechSynthesis API
+      function populateVoices() {
+        const voices = window.speechSynthesis.getVoices();
+        voiceSelect.innerHTML = "";
+        voices.forEach(voice => {
+          const option = document.createElement("option");
+          option.value = voice.name;
+          option.textContent = `${voice.name} (${voice.lang})`;
+          voiceSelect.appendChild(option);
+        });
+      }
+      window.speechSynthesis.onvoiceschanged = populateVoices;
+      
+      // Test TTS settings: speak sample text using selected voice and rate
+      ttsTestBtn.addEventListener("click", () => {
+        const sampleText = "This is a test of your text to speech settings.";
+        const utterance = new SpeechSynthesisUtterance(sampleText);
+        const voices = window.speechSynthesis.getVoices();
+        const selectedVoiceName = voiceSelect.value;
+        const selectedVoice = voices.find(voice => voice.name === selectedVoiceName);
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+        }
+        utterance.rate = parseFloat(rateSlider.value);
+        window.speechSynthesis.speak(utterance);
+      });
+      
+      // TTS: Speak the corrected text using selected voice and rate
+      ttsBtn.addEventListener('click', () => {
+        const text = output.textContent;
+        if (text.trim() !== "") {
+          const utterance = new SpeechSynthesisUtterance(text);
+          const voices = window.speechSynthesis.getVoices();
+          const selectedVoiceName = voiceSelect.value;
+          const selectedVoice = voices.find(voice => voice.name === selectedVoiceName);
+          if (selectedVoice) {
+            utterance.voice = selectedVoice;
+          }
+          utterance.rate = parseFloat(rateSlider.value);
+          window.speechSynthesis.speak(utterance);
+        }
+      });
+      
+      // --- Settings Modal Functionality ---
+      settingsBtn.addEventListener('click', () => {
+        settingsModal.style.display = "flex";
+      });
+      
+      closeSettingsBtn.addEventListener('click', () => {
+        settingsModal.style.display = "none";
+        updateOutputStyle();
+        updateGlobalFontSize();
+      });
+      
+      bgColorPicker.addEventListener('input', updateOutputStyle);
+      fontColorPicker.addEventListener('input', updateOutputStyle);
+      globalFontSizeSlider.addEventListener('input', () => {
+        updateGlobalFontSize();
+        updateOutputStyle();
+      });
+      
+      // Main control event listeners
+      captureBtn.addEventListener('click', () => {
+        captureRawImage();
+        video.classList.add('hidden');
+        captureBtn.classList.add('hidden');
+        photo.classList.remove('hidden');
+        ocrBtn.classList.remove('hidden');
+        retakeBtn.classList.remove('hidden');
+        ttsBtn.classList.add('hidden');
+        rawImage.onload = () => {
+          updatePreviewAuto();
+        };
+      });
+      
+      ocrBtn.addEventListener('click', runOCR);
+      
+      retakeBtn.addEventListener('click', () => {
+        rawImage = null;
+        video.classList.remove('hidden');
+        captureBtn.classList.remove('hidden');
+        photo.classList.add('hidden');
+        ocrBtn.classList.add('hidden');
+        retakeBtn.classList.add('hidden');
+        ttsBtn.classList.add('hidden');
+        output.textContent = 'Recognized text will appear here...';
+      });
+      
+      // Initialize camera, update styles, and populate voices
+      startCamera();
+      updateOutputStyle();
+      updateGlobalFontSize();
+      populateVoices();
+    });
+  </script>
+</body>
+</html>
